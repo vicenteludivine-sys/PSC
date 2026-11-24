@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#10192d">
+<title>Simulateur d'alerte — Staying Alive</title>
+<style>
+:root{--bg:#10192d;--panel:#1e2a3e;--line:#344257;--muted:#9aa8bc;--white:#f7f9fc;--red:#e32327;--green:#16c58b;--green2:#25d69d;--yellow:#ffdf72}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:#050b19;color:var(--white);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{display:flex;justify-content:center}
+.phone{width:min(100%,920px);min-height:100svh;background:var(--bg);border-left:16px solid #202b3e;border-right:16px solid #202b3e;border-radius:0 0 48px 48px;padding:clamp(22px,5vw,56px);display:flex;flex-direction:column}
+.top{display:flex;align-items:center;gap:22px;margin:4px 0 36px}
+.logo{width:88px;height:88px;border-radius:24px;background:var(--red);display:grid;place-items:center;font-size:48px;box-shadow:0 12px 24px #e3232730;flex:none}
+h1{font-size:clamp(28px,5vw,42px);line-height:1.05;margin:0;font-weight:850;letter-spacing:-1.5px}
+.subtitle{font-size:clamp(17px,3vw,24px);color:var(--muted);margin-top:7px}
+.section{font-weight:800;letter-spacing:.6px;color:var(--muted);font-size:clamp(16px,2.8vw,24px);margin:0 0 14px}
+.apps{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:32px}
+.app{border:4px solid var(--line);border-radius:24px;padding:25px 10px;text-align:center;background:#1a2639;color:var(--white);cursor:pointer;font:inherit;min-height:126px}
+.app strong{display:block;font-size:clamp(21px,3.5vw,32px);font-weight:850}
+.app span{display:block;color:var(--muted);font-size:18px;margin-top:7px}
+.app.sauv strong{color:#ff7074}.app.staying strong{color:#27d49a}
+.app.selected.sauv{border-color:#ff4248;background:#2b202d}
+.app.selected.staying{border-color:#1acb91;background:#18302f}
+.field{margin-bottom:30px}
+input[type=text]{width:100%;background:var(--panel);border:2px solid var(--line);border-radius:24px;padding:24px 30px;color:white;font:600 clamp(17px,3vw,27px) system-ui;outline:none}
+input:focus{border-color:var(--green)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:24px}
+.delay{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.delay button{background:var(--panel);border:2px solid var(--line);border-radius:22px;padding:19px 6px;color:white;font-size:24px;font-weight:800;cursor:pointer}
+.delay button.active{background:var(--red);border-color:#ff4d53}
+.notice{margin-top:auto;margin-bottom:24px;border:2px solid #79521c;background:#292832;border-radius:24px;padding:22px 24px;color:var(--yellow);font-size:clamp(16px,2.8vw,24px);font-weight:650;display:flex;gap:16px;align-items:flex-start}
+.notice b{font-size:28px}
+.primary{border:0;border-radius:32px;padding:28px 18px;background:linear-gradient(100deg,#e32327,#e51450);color:white;font-size:clamp(22px,4vw,34px);font-weight:900;cursor:pointer;box-shadow:0 14px 28px #e3232730}
+.primary:active,.mission:active,.refuse:active{transform:scale(.99)}
+.screen{display:none;min-height:calc(100svh - 60px);flex-direction:column;align-items:center;text-align:center}
+.screen.show{display:flex}
+.lock{background:#000;justify-content:flex-start;padding-top:12vh}
+.lockicon{width:80px;height:80px;border-radius:50%;background:#10192d;color:#65758e;display:grid;place-items:center;font-size:36px}
+.clock{font-size:clamp(82px,19vw,150px);font-weight:300;letter-spacing:-5px;line-height:1.1;margin-top:28px}
+.date{font-size:clamp(20px,3.5vw,30px);color:var(--muted);margin-top:12px}
+.countdown{margin-top:auto;margin-bottom:12px;color:#35445c;font:600 clamp(20px,3vw,26px) ui-monospace,monospace}
+.lock .countdown{display:none}
+.hint{color:#29384e;font-size:clamp(16px,2.8vw,22px);margin-bottom:16px}
+.alert{padding:28px 22px 24px;justify-content:flex-start;gap:0;background:#c72b2e;min-height:calc(100svh - 60px)}
+.alert.staying{background:linear-gradient(160deg,#087b62,#075d54 55%,#064b49)}
+.brandpill{background:#fff;color:#b91e22;border-radius:50px;padding:12px 32px;font-size:28px;font-weight:950;letter-spacing:1px;box-shadow:0 6px 14px #0002}
+.alert.staying .brandpill{color:#087b62}
+.alertkicker{font-size:clamp(18px,3vw,26px);font-weight:850;letter-spacing:1.5px;margin-top:22px}
+.heart{margin-top:clamp(110px,19vh,190px);width:190px;height:190px;border-radius:50%;background:#ffffff35;display:grid;place-items:center;font-size:100px}
+.alert h2{font-size:clamp(38px,7vw,72px);line-height:1;margin:58px 0 38px;font-weight:950;text-shadow:0 5px 7px #0002}
+.victim{background:#0003;border:1px solid #ffffff35;border-radius:34px;padding:24px 28px;max-width:640px;width:90%}
+.victim strong{font-size:clamp(24px,4vw,38px);display:block;font-weight:900}
+.victim p{font-size:clamp(17px,3vw,24px);margin:10px 0 0}
+.actions{margin-top:auto;width:100%;display:grid;gap:22px;padding-top:50px}
+.mission{background:#16bd8b;border:4px solid #70f0bd;border-radius:32px;padding:38px 12px;color:#001b24;font-size:clamp(22px,4vw,38px);font-weight:950;cursor:pointer}
+.refuse{background:#650f13a8;border:0;border-radius:26px;padding:25px;color:#ffe6e6;font-size:clamp(19px,3.5vw,28px);font-weight:800;cursor:pointer}
+.alert.staying .refuse{background:#003f38}
+.result{display:none;margin-top:18px;padding:20px;border-radius:18px;background:#102a2a;color:white;font-size:20px}
+.result.show{display:block}
+.mission-screen{display:none;min-height:calc(100svh - 60px);flex-direction:column;gap:28px;padding-top:10px;text-align:left}
+.mission-screen.show{display:flex}
+.statusbar{background:#123239;border:2px solid #126c5b;border-radius:32px;padding:24px;display:flex;justify-content:space-between;align-items:center;gap:16px}
+.status-title{font-size:clamp(18px,3vw,26px);font-weight:950;color:#2bd49d}
+.elapsed-label{font-size:16px;color:var(--muted);text-align:right}
+.elapsed{font:900 clamp(25px,4vw,34px) ui-monospace,monospace;text-align:right;color:white;margin-top:4px}
+.radar{height:350px;border:2px solid #1e2b40;border-radius:32px;background:#030817;display:grid;place-items:center;position:relative;overflow:hidden}
+.radar-name{position:absolute;top:22px;left:24px;color:var(--muted);font-size:22px;font-weight:850}
+.radar-rings{width:250px;height:250px;border:2px solid #073c35;border-radius:50%;display:grid;place-items:center;position:relative}
+.radar-rings:before{content:"";position:absolute;width:155px;height:155px;border:2px solid #245447;border-radius:50%;background:#e3232717;box-shadow:0 0 0 12px #e3232720}
+.victim-dot{width:48px;height:48px;background:#e32327;border:5px solid white;border-radius:50%;z-index:1;box-shadow:0 0 0 10px #e3232720}
+.victim-tag{position:absolute;top:60%;background:#e32327;color:white;border-radius:10px;padding:8px 16px;font-weight:950;white-space:nowrap;z-index:2}
+.info-card{display:flex;align-items:center;gap:24px;padding:26px 30px;border-radius:32px;background:var(--panel);border:2px solid var(--line)}
+.info-icon{width:88px;height:88px;flex:none;border-radius:24px;background:#ff6c7430;color:#ff7277;display:grid;place-items:center;font-size:40px;font-weight:950}
+.info-label{color:#ff7277;font-weight:900;font-size:clamp(16px,2.5vw,23px);margin-bottom:8px}
+.info-value{font-weight:900;font-size:clamp(20px,3.4vw,32px);line-height:1.2;overflow-wrap:anywhere}
+.dae-card{background:#062b29;border-color:#075f50}
+.dae-card .info-icon{background:#07996f;color:white;font-size:24px}
+.dae-card .info-label{color:#2bd49d}
+.arrived{margin-top:auto;background:#2563eb;border:0;border-radius:32px;padding:32px 12px;color:white;font-size:clamp(22px,4vw,34px);font-weight:950;cursor:pointer;box-shadow:0 14px 28px #2563eb35}
+@media(max-width:540px){.mission-screen{gap:22px}.statusbar{padding:20px}.radar{height:300px}.info-card{padding:20px;gap:16px}.info-icon{width:72px;height:72px}.arrived{padding:28px 8px}}
+.smallprint{color:#718098;text-align:center;font-size:12px;margin-top:16px}
+@media(max-width:540px){.phone{border-left-width:12px;border-right-width:12px;border-radius:0 0 34px 34px;padding:24px 20px}.top{gap:16px;margin-bottom:30px}.logo{width:72px;height:72px;font-size:38px}.apps{gap:12px}.app{min-height:112px;padding:20px 6px;border-width:3px}.two{gap:12px}.delay{gap:8px}.delay button{font-size:20px;padding:16px 4px}.notice{padding:18px}.alert{padding-left:14px;padding-right:14px}.heart{width:150px;height:150px;font-size:80px}.alert h2{margin:48px 0 34px}.mission{padding:30px 8px}}
+
+.emergency-screen{display:none;min-height:calc(100svh - 60px);flex-direction:column;gap:16px;padding-top:10px;text-align:left}
+.emergency-screen.show{display:flex}
+.emergency-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 8px}
+.emergency-head h2{font-size:clamp(27px,4.5vw,38px);margin:0;font-weight:950;letter-spacing:-.7px}
+.emergency-sub{color:var(--muted);font-size:clamp(17px,3vw,24px);margin-top:4px}
+.elapsed-chip{background:var(--panel);border:2px solid var(--line);border-radius:17px;padding:12px 18px;color:#2bd49d;font:900 27px ui-monospace,monospace;white-space:nowrap}
+.checklist{display:grid;gap:14px}
+.checkrow{display:flex;align-items:center;gap:22px;padding:22px 24px;border:2px solid var(--line);border-radius:25px;background:var(--panel);font-size:clamp(18px,3vw,27px);font-weight:800;cursor:pointer;line-height:1.25}
+.checkrow input{width:38px;height:38px;flex:none;accent-color:#16bd8b}
+.checkrow:has(input:checked){border-color:#16bd8b;background:#12332f}
+.metronome{margin-top:12px;background:#030817;border:2px solid #1e2b40;border-radius:32px;padding:26px 32px;text-align:center}
+.metro-top{display:flex;justify-content:space-between;gap:10px;color:#ff6680;font-size:clamp(17px,2.7vw,24px);font-weight:950;text-align:left}
+.bpm{color:var(--muted);font:900 24px ui-monospace,monospace;white-space:nowrap}
+.pulse-heart{margin:26px auto;width:128px;height:128px;border:4px solid #ff3564;border-radius:50%;display:grid;place-items:center;color:#ff3564;font-size:62px;box-shadow:0 12px 28px #ff356425}
+.pulse-heart.beat{animation:pulse .25s ease-out}
+@keyframes pulse{50%{transform:scale(1.12);background:#ff356420}}
+.metro-button{width:100%;background:#e8174b;color:white;border:0;border-radius:24px;padding:24px 10px;font-size:clamp(18px,3vw,27px);font-weight:900;cursor:pointer}
+.finish-button{width:100%;margin-top:auto;background:#1e2a3e;color:#e7edf6;border:2px solid #46556b;border-radius:24px;padding:28px 14px;font-size:clamp(18px,3vw,27px);font-weight:850;cursor:pointer;min-height:100px}
+@media(max-width:540px){.checkrow{padding:18px;gap:16px}.checkrow input{width:32px;height:32px}.metronome{padding:22px 18px}.emergency-head h2{font-size:26px}.elapsed-chip{font-size:22px;padding:10px 12px}}
+
+
+.role-learner .trainer-only,.role-trainer .learner-only{display:none!important}
+.role-btn.selected{border-color:#4f8cff;background:#16264a}
+.role-btn strong{color:#8ab4ff}
+.conn{font-size:15px;font-weight:700;color:var(--muted);margin:-18px 0 24px}
+.conn.ok{color:#2bd49d}.conn.ko{color:#ffb84d}
+.secondary{background:var(--panel);color:#e7edf6;border:2px solid var(--line);border-radius:24px;padding:20px 12px;margin-top:12px;font-size:clamp(17px,3vw,22px);font-weight:800;cursor:pointer}
+.statusmsg{min-height:24px;margin-top:14px;text-align:center;color:var(--muted);font-size:clamp(15px,2.6vw,19px);font-weight:650}
+.lockstatus{margin-top:auto;margin-bottom:16px;color:#2a3a52;font-size:15px}
+.lockstatus.ko{color:#b58a2b}
+</style>
+</head>
+<body>
+<main class="phone">
+  <section id="setup" class="screen" style="min-height:calc(100svh - 60px);text-align:left">
+    <header class="top">
+      <div class="logo">♡</div>
+      <div><h1>Simulateur Alerte</h1><div class="subtitle">Formation Citoyen Sauveteur</div></div>
+    </header>
+    <div class="section">MON RÔLE</div>
+    <div class="apps">
+      <button class="app role-btn" id="roleTrainer"><strong>Formateur</strong><span>Lance l’alerte</span></button>
+      <button class="app role-btn" id="roleLearner"><strong>Apprenant</strong><span>Reçoit l’alerte</span></button>
+    </div>
+    <div class="conn" id="conn">● Connexion…</div>
+    <div class="section trainer-only">APPLICATION SIMULÉE</div>
+    <div class="apps trainer-only">
+      <button class="app sauv" id="sauv"><strong>SAUV Life</strong><span>SAMU / Urgences</span></button>
+      <button class="app staying selected" id="staying"><strong>Staying Alive</strong><span>Bon Samaritain</span></button>
+    </div>
+    <div class="field trainer-only">
+      <div class="section">LIEU PRÉCIS DE LA VICTIME</div>
+      <input id="place" type="text" value="Salle 104 - 1er étage (Bâtiment B)" aria-label="Lieu précis de la victime">
+    </div>
+    <div class="two trainer-only">
+      <div class="field"><div class="section">DISTANCE ESTIMÉE</div><input id="distance" type="text" value="120 m" aria-label="Distance estimée"></div>
+      <div class="field"><div class="section">DÉFIBRILLATEUR (DAE)</div><input id="dae" type="text" value="Hall d'accueil (RDC)" aria-label="Emplacement du DAE"></div>
+    </div>
+    <div class="field trainer-only">
+      <div class="section">DÉLAI AVANT DÉCLENCHEMENT</div>
+      <div class="delay"><button data-delay="45">45s</button><button data-delay="60" class="active">60s</button><button data-delay="75">75s</button><button data-delay="0">0s</button></div>
+    </div>
+    <div class="notice learner-only"><b>🔊</b><span>Activez le volume, puis appuyez sur « Armer ». Le téléphone se verrouille et attend l’alerte du formateur.</span></div>
+    <div class="notice trainer-only"><b>📣</b><span>Les apprenants doivent d’abord avoir armé leur téléphone. Lancez ensuite l’alerte : elle s’affiche en direct chez eux.</span></div>
+    <button class="primary learner-only" id="arm">♙ &nbsp; ARMER MON TÉLÉPHONE</button>
+    <button class="primary trainer-only" id="launch">🚨 &nbsp; LANCER L’ALERTE</button>
+    <button class="secondary trainer-only" id="reset">↺ Réinitialiser (fin de groupe)</button>
+    <button class="secondary trainer-only" id="localtest">Tester sur ce téléphone (sans Firebase)</button>
+    <div class="statusmsg" id="statusMsg"></div>
+    <div class="smallprint">Simulation pédagogique uniquement — aucune alerte réelle ne sera envoyée.</div>
+  </section>
+
+  <section id="lock" class="screen lock show">
+    <div class="lockicon">▣</div>
+    <div class="clock" id="clock">12:12</div>
+    <div class="date" id="date"></div>
+    <div class="countdown" id="countdown">Déclenchement dans 10s...</div>
+    <div class="lockstatus" id="lockStatus"></div>
+    
+  </section>
+
+  <section id="alert" class="screen alert staying">
+    <div class="brandpill" id="brand">STAYING ALIVE</div>
+    <div class="alertkicker" id="alertkicker">ALERTE BON SAMARITAIN</div>
+    <div class="heart">♥</div>
+    <h2>ARRÊT CARDIAQUE</h2>
+    <div class="victim"><strong>Victime à <u id="alertdistance">120 m</u></strong><p id="alertmessage">Une victime a besoin de votre aide immédiate</p></div>
+    <div class="actions">
+      <button class="mission" id="accept">✓ &nbsp; J'ACCEPTE LA MISSION</button>
+      <button class="refuse" id="refuse">Indisponible / Refuser</button>
+    </div>
+    <div class="result" id="result"></div>
+    <div class="smallprint" style="color:#ffffffaa">SIMULATION PÉDAGOGIQUE — AUCUNE ALERTE RÉELLE</div>
+  </section>
+
+  <section id="missionScreen" class="mission-screen">
+    <div class="statusbar">
+      <div class="status-title">🟢 MISSION EN COURS</div>
+      <div><div class="elapsed-label">TEMPS ÉCOULÉ</div><div class="elapsed" id="elapsed">00:00</div></div>
+    </div>
+    <div class="radar">
+      <div class="radar-name" id="missionBrand">Staying Alive</div>
+      <div class="radar-rings"><div class="victim-dot"></div><div class="victim-tag" id="victimTag">VICTIME (120 M)</div></div>
+    </div>
+    <div class="info-card">
+      <div class="info-icon">⌖</div>
+      <div><div class="info-label">REJOIGNEZ IMMÉDIATEMENT :</div><div class="info-value" id="missionPlace">Salle 104 - 1er étage (Bâtiment B)</div></div>
+    </div>
+    <div class="info-card dae-card">
+      <div class="info-icon">DAE</div>
+      <div><div class="info-label">DÉFIBRILLATEUR LE PLUS PROCHE</div><div class="info-value" id="missionDae">Hall d'accueil (RDC)</div></div>
+    </div>
+    <button class="arrived" id="arrived">☑ &nbsp; JE SUIS SUR PLACE</button>
+    <div class="result" id="missionResult"></div>
+    <div class="smallprint">SIMULATION PÉDAGOGIQUE — AUCUNE ALERTE RÉELLE</div>
+  </section>
+
+  <section id="emergencyScreen" class="emergency-screen">
+    <div class="emergency-head">
+      <div><h2>Gestes d'Urgence</h2><div class="emergency-sub">Cochez les étapes réalisées</div></div>
+      <div class="elapsed-chip" id="emergencyElapsed">00:00</div>
+    </div>
+    <div class="checklist">
+      <label class="checkrow"><input type="checkbox"> <span>1. Sécuriser la zone (danger)</span></label>
+      <label class="checkrow"><input type="checkbox"> <span>2. Vérifier conscience &amp; respiration</span></label>
+      <label class="checkrow"><input type="checkbox"> <span>3. Faire alerter (15/112) &amp; demander DAE</span></label>
+      <label class="checkrow"><input type="checkbox"> <span>4. Débuter le massage cardiaque (RCP)</span></label>
+    </div>
+    <div class="metronome">
+      <div class="metro-top"><span>AIDE AU MASSAGE (RCP)</span><span class="bpm">110 BPM</span></div>
+      <div class="pulse-heart" id="pulseHeart">♥</div>
+      <button class="metro-button" id="metroButton">▶ Démarrer le métronome (110/min)</button>
+    </div>
+    <div class="smallprint">Simulation pédagogique — suivez les consignes de votre formation et des secours.</div>
+    <button class="finish-button" id="finishExercise">Terminer l’exercice (Retour formateur)</button>
+  </section>
+
+</main>
+<script>
+window.fbReady=new Promise(r=>{window._fbResolve=r});
+(()=>{
+ let selected='staying', delay=60, timer=null, wake=null, audio=null, missionTimer=null, missionStart=0, metroTimer=null, unsub=null, launchTimer=null, role='apprenant';
+ const $=id=>document.getElementById(id);
+ function show(id){['setup','lock','alert','missionScreen','emergencyScreen'].forEach(x=>$(x).classList.toggle('show',x===id))}
+ function selectApp(app){selected=app; $('sauv').classList.toggle('selected',app==='sauv');$('staying').classList.toggle('selected',app==='staying')}
+ $('sauv').addEventListener('click',()=>selectApp('sauv'));
+ $('staying').addEventListener('click',()=>selectApp('staying'));
+ document.querySelectorAll('[data-delay]').forEach(b=>b.addEventListener('click',()=>{delay=Number(b.dataset.delay);document.querySelectorAll('[data-delay]').forEach(x=>x.classList.toggle('active',x===b))}));
+ function updateClock(){const d=new Date();$('clock').textContent=d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});$('date').textContent=d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});}
+ function beep(){try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();audio.resume();const osc=audio.createOscillator(),gain=audio.createGain();osc.type='sine';osc.frequency.value=880;gain.gain.setValueAtTime(.0001,audio.currentTime);gain.gain.exponentialRampToValueAtTime(.16,audio.currentTime+.03);gain.gain.setValueAtTime(.16,audio.currentTime+.22);gain.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+.45);osc.connect(gain);gain.connect(audio.destination);osc.start();osc.stop(audio.currentTime+.46)}catch(e){}}
+ function trigger(){clearInterval(timer);timer=null;updateClock();$('alert').classList.toggle('staying',selected==='staying');$('brand').textContent=selected==='staying'?'STAYING ALIVE':'SAUV LIFE';$('alertkicker').textContent=selected==='staying'?'ALERTE BON SAMARITAIN':'ALERTE CITOYEN SAUVETEUR';$('alertdistance').textContent=$('distance').value.trim()||'—';$('alertmessage').textContent=selected==='staying'?'Une victime a besoin de votre aide immédiate':'Le SAMU a besoin de votre aide immédiate';$('result').classList.remove('show');$('result').textContent='';show('alert');beep();}
+ function startCountdown(){let left=delay;updateClock();show('lock');$('countdown').textContent=left===0?'Déclenchement imminent...':`Déclenchement dans ${left}s...`;if(left===0){trigger();return}timer=setInterval(()=>{left--;if(left<=0){trigger()}else{$('countdown').textContent=`Déclenchement dans ${left}s...`}},1000)}
+ 
+
+ $('accept').addEventListener('click',()=>{
+   $('missionPlace').textContent=$('place').value.trim()||'Lieu non précisé';
+   $('missionDae').textContent=$('dae').value.trim()||'DAE non précisé';
+   $('missionBrand').textContent=selected==='staying'?'Staying Alive':'SAUV Life';
+   $('victimTag').textContent=`VICTIME (${$('distance').value.trim()||'—'})`;
+   missionStart=Date.now();
+   clearInterval(missionTimer);
+   const tick=()=>{const s=Math.floor((Date.now()-missionStart)/1000);$('elapsed').textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0')};
+   tick();missionTimer=setInterval(()=>{tick();updateEmergencyTime()},1000);
+   $('missionResult').classList.remove('show');show('missionScreen');beep();
+ });
+ $('refuse').addEventListener('click',()=>{clearInterval(timer);clearInterval(missionTimer);releaseScreen();show('lock');startListening()});
+ $('arrived').addEventListener('click',()=>{
+   show('emergencyScreen');
+   beep();
+ });
+ function updateEmergencyTime(){
+   const s=Math.floor((Date.now()-missionStart)/1000);
+   $('emergencyElapsed').textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+ }
+ function stopMetro(){
+   if(metroTimer){clearInterval(metroTimer);metroTimer=null}
+   $('metroButton').textContent='▶ Démarrer le métronome (110/min)';
+   $('pulseHeart').classList.remove('beat');
+ }
+ 
+ $('finishExercise').addEventListener('click',()=>{stopListening();
+   stopMetro();
+   clearInterval(missionTimer);missionTimer=null;
+   clearInterval(timer);timer=null;
+   if(wake){wake.release().catch(()=>{});wake=null}
+   try{if(document.fullscreenElement)document.exitFullscreen()}catch(e){}
+   show('setup');
+   window.scrollTo({top:0,behavior:'smooth'});
+ });
+
+ $('metroButton').addEventListener('click',async()=>{
+   if(metroTimer){stopMetro();return}
+   try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();await audio.resume()}catch(e){}
+   const beat=()=>{
+     try{
+       const osc=audio.createOscillator(),gain=audio.createGain();
+       osc.type='sine';osc.frequency.value=740;
+       gain.gain.setValueAtTime(.0001,audio.currentTime);
+       gain.gain.exponentialRampToValueAtTime(.12,audio.currentTime+.012);
+       gain.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+.12);
+       osc.connect(gain);gain.connect(audio.destination);osc.start();osc.stop(audio.currentTime+.13);
+     }catch(e){}
+     $('pulseHeart').classList.remove('beat');void $('pulseHeart').offsetWidth;$('pulseHeart').classList.add('beat');
+   };
+   beat();metroTimer=setInterval(beat,60000/110);
+   $('metroButton').textContent='Ⅱ Arrêter le métronome';
+ });
+ updateClock();
+
+ // ===== Mode temps réel (Firebase) =====
+ const LAUNCH_TXT='🚨 \u00a0 LANCER L’ALERTE';
+ let connOk=false;
+ function say(t){$('statusMsg').textContent=t}
+ function setRole(r){
+   role=r;
+   document.body.classList.toggle('role-trainer',r==='formateur');
+   document.body.classList.toggle('role-learner',r==='apprenant');
+   $('roleTrainer').classList.toggle('selected',r==='formateur');
+   $('roleLearner').classList.toggle('selected',r==='apprenant');
+   say('');
+   try{localStorage.setItem('psc-role',r)}catch(e){}
+   if(r==='formateur'){
+     stopListening();
+     releaseScreen();
+     show('setup');
+   }else{
+     show('lock');
+     startListening();
+   }
+ }
+ function requestTrainerAccess(){
+   const entered=window.prompt('Code formateur :');
+   if(entered==='2026'){
+     setRole('formateur');
+   }else if(entered!==null){
+     window.alert('Code incorrect.');
+   }
+ }
+ $('roleTrainer').addEventListener('click',requestTrainerAccess);
+ $('roleLearner').addEventListener('click',()=>setRole('apprenant'));
+ // Au démarrage, toujours ouvrir l’application côté apprenant.
+ setRole('apprenant');
+ function unlockAudio(){try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();audio.resume();const b=audio.createBuffer(1,1,22050),n=audio.createBufferSource();n.buffer=b;n.connect(audio.destination);n.start(0)}catch(e){}}
+ async function lockScreen(){try{if(navigator.wakeLock)wake=await navigator.wakeLock.request('screen')}catch(e){}try{if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen()}catch(e){}}
+ function releaseScreen(){try{if(document.fullscreenElement)document.exitFullscreen()}catch(e){}if(wake){wake.release().catch(()=>{});wake=null}}
+ function ready(){return Promise.race([window.fbReady,new Promise(r=>setTimeout(()=>r(false),8000))])}
+ function stopListening(){if(unsub){try{unsub()}catch(e){}unsub=null}}
+ function showConn(){const c=$('conn');c.textContent=connOk?'● Connecté au serveur':'● Hors ligne';c.className='conn '+(connOk?'ok':'ko');const l=$('lockStatus');l.textContent=unsub?(connOk?'● connecté':'⚠ connexion perdue…'):'';l.className='lockstatus'+(connOk?'':' ko')}
+ window.addEventListener('fbconn',e=>{connOk=e.detail;showConn()});
+ ready().then(ok=>{if(!ok)showConn()});
+
+ // APPRENANT : écoute automatique de l’alerte Firebase
+ async function startListening(){
+   if(role!=='apprenant') return;
+   say('Connexion…');
+   if(!await ready()){
+     showConn();
+     say('⚠️ Connexion au serveur impossible. Vérifiez internet.');
+     return;
+   }
+   say('');
+   updateClock();
+   show('lock');
+   stopListening();
+   let first=true,baseline=null,lastId=null;
+   unsub=window.fb.ecouter(d=>{
+     if(first){first=false;baseline=d&&d.id||null;showConn();return}
+     if(d&&d.status==='triggered'&&d.id&&d.id!==baseline&&d.id!==lastId){
+       lastId=d.id;
+       stopListening();
+       selectApp(d.app==='sauv'?'sauv':'staying');
+       $('place').value=d.place||'';
+       $('distance').value=d.distance||'';
+       $('dae').value=d.dae||'';
+       trigger();
+     }
+   });
+   showConn();
+ }
+
+ // Le bouton autorise aussi le son, le plein écran et l’écran actif.
+ $('arm').addEventListener('click',async()=>{
+   unlockAudio();
+   await lockScreen();
+   await startListening();
+ });
+
+ // FORMATEUR : lancer, annuler, réinitialiser
+ $('launch').addEventListener('click',async()=>{
+   const btn=$('launch');
+   if(launchTimer){clearInterval(launchTimer);launchTimer=null;btn.textContent=LAUNCH_TXT;say('Lancement annulé.');return}
+   if(!await ready()){say('⚠️ Connexion au serveur impossible. Vérifiez internet et réessayez.');return}
+   const send=async()=>{
+     clearInterval(launchTimer);launchTimer=null;btn.textContent=LAUNCH_TXT;
+     try{await window.fb.declencher({app:selected,place:$('place').value.trim(),distance:$('distance').value.trim(),dae:$('dae').value.trim()});say('✅ Alerte envoyée aux apprenants. Pensez à réinitialiser en fin de groupe.')}
+     catch(e){say('⚠️ Échec de l’envoi : '+(e&&e.message||e))}
+   };
+   let left=delay;
+   if(left<=0){send();return}
+   const label=()=>{btn.textContent='⏳ Alerte dans '+left+'s — toucher pour annuler'};
+   label();say('');
+   launchTimer=setInterval(()=>{left--;if(left<=0)send();else label()},1000);
+ });
+ $('reset').addEventListener('click',async()=>{
+   if(launchTimer){clearInterval(launchTimer);launchTimer=null;$('launch').textContent=LAUNCH_TXT}
+   if(!await ready()){say('⚠️ Connexion au serveur impossible.');return}
+   try{await window.fb.reinitialiser();say('↺ Remis à zéro. Prêt pour le groupe suivant.')}catch(e){say('⚠️ Échec : '+(e&&e.message||e))}
+ });
+ // Test local (comportement d’origine, sans Firebase)
+ $('localtest').addEventListener('click',async()=>{unlockAudio();await lockScreen();startCountdown()});
+
+ // Premier toucher : demander les autorisations navigateur utiles à l’écran d’attente.
+ let screenActivated=false;
+ $('lock').addEventListener('click',()=>{
+   if(!screenActivated){
+     screenActivated=true;
+     unlockAudio();
+     lockScreen();
+   }
+ });
+
+ // Accès discret au formateur : triple-clic sur l’horloge.
+ let clockClicks=0,clockClickTimer=null;
+ $('clock').addEventListener('click',()=>{
+   clockClicks++;
+   clearTimeout(clockClickTimer);
+   if(clockClicks>=3){
+     clockClicks=0;
+     stopListening();
+     releaseScreen();
+     requestTrainerAccess();
+     return;
+   }
+   clockClickTimer=setTimeout(()=>{clockClicks=0},1400);
+ });
+
+})();
+</script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+  import { getDatabase, ref, set, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBLp2VJ33VUesfjdv7XRex4tvI6c9jAoio",
+    authDomain: "psc-2026.firebaseapp.com",
+    databaseURL: "https://psc-2026-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "psc-2026",
+    storageBucket: "psc-2026.firebasestorage.app",
+    messagingSenderId: "363706013370",
+    appId: "1:363706013370:web:4d055212e636a554e2d483"
+  };
+
+  try {
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    await signInAnonymously(getAuth(app));
+    const alerteRef = ref(db, "alerte");
+    window.fb = {
+      declencher: (scenario) => set(alerteRef, { status: "triggered", id: Date.now() + "-" + Math.random().toString(36).slice(2, 8), ...scenario, at: serverTimestamp() }),
+      reinitialiser: () => set(alerteRef, { status: "idle" }),
+      ecouter: (cb) => onValue(alerteRef, (snap) => cb(snap.val()), (err) => console.error(err))
+    };
+    onValue(ref(db, ".info/connected"), (snap) => window.dispatchEvent(new CustomEvent("fbconn", { detail: snap.val() === true })));
+    window._fbResolve(true);
+  } catch (e) {
+    console.error("Firebase :", e);
+    window._fbResolve(false);
+  }
+</script>
+</body>
+</html>
