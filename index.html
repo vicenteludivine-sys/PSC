@@ -103,6 +103,16 @@ input:focus{border-color:var(--green)}
 .finish-button{width:100%;margin-top:auto;background:#1e2a3e;color:#e7edf6;border:2px solid #46556b;border-radius:24px;padding:28px 14px;font-size:clamp(18px,3vw,27px);font-weight:850;cursor:pointer;min-height:100px}
 @media(max-width:540px){.checkrow{padding:18px;gap:16px}.checkrow input{width:32px;height:32px}.metronome{padding:22px 18px}.emergency-head h2{font-size:26px}.elapsed-chip{font-size:22px;padding:10px 12px}}
 
+
+.role-learner .trainer-only,.role-trainer .learner-only{display:none!important}
+.role-btn.selected{border-color:#4f8cff;background:#16264a}
+.role-btn strong{color:#8ab4ff}
+.conn{font-size:15px;font-weight:700;color:var(--muted);margin:-18px 0 24px}
+.conn.ok{color:#2bd49d}.conn.ko{color:#ffb84d}
+.secondary{background:var(--panel);color:#e7edf6;border:2px solid var(--line);border-radius:24px;padding:20px 12px;margin-top:12px;font-size:clamp(17px,3vw,22px);font-weight:800;cursor:pointer}
+.statusmsg{min-height:24px;margin-top:14px;text-align:center;color:var(--muted);font-size:clamp(15px,2.6vw,19px);font-weight:650}
+.lockstatus{margin-top:auto;margin-bottom:16px;color:#2a3a52;font-size:15px}
+.lockstatus.ko{color:#b58a2b}
 </style>
 </head>
 <body>
@@ -112,25 +122,36 @@ input:focus{border-color:var(--green)}
       <div class="logo">♡</div>
       <div><h1>Simulateur Alerte</h1><div class="subtitle">Formation Citoyen Sauveteur</div></div>
     </header>
-    <div class="section">APPLICATION SIMULÉE</div>
+    <div class="section">MON RÔLE</div>
     <div class="apps">
+      <button class="app role-btn" id="roleTrainer"><strong>Formateur</strong><span>Lance l’alerte</span></button>
+      <button class="app role-btn" id="roleLearner"><strong>Apprenant</strong><span>Reçoit l’alerte</span></button>
+    </div>
+    <div class="conn" id="conn">● Connexion…</div>
+    <div class="section trainer-only">APPLICATION SIMULÉE</div>
+    <div class="apps trainer-only">
       <button class="app sauv" id="sauv"><strong>SAUV Life</strong><span>SAMU / Urgences</span></button>
       <button class="app staying selected" id="staying"><strong>Staying Alive</strong><span>Bon Samaritain</span></button>
     </div>
-    <div class="field">
+    <div class="field trainer-only">
       <div class="section">LIEU PRÉCIS DE LA VICTIME</div>
       <input id="place" type="text" value="Salle 104 - 1er étage (Bâtiment B)" aria-label="Lieu précis de la victime">
     </div>
-    <div class="two">
+    <div class="two trainer-only">
       <div class="field"><div class="section">DISTANCE ESTIMÉE</div><input id="distance" type="text" value="120 m" aria-label="Distance estimée"></div>
       <div class="field"><div class="section">DÉFIBRILLATEUR (DAE)</div><input id="dae" type="text" value="Hall d'accueil (RDC)" aria-label="Emplacement du DAE"></div>
     </div>
-    <div class="field">
+    <div class="field trainer-only">
       <div class="section">DÉLAI AVANT DÉCLENCHEMENT</div>
-      <div class="delay"><button data-delay="45">45s</button><button data-delay="60" class="active">60s</button><button data-delay="75">75s</button></div>
+      <div class="delay"><button data-delay="45">45s</button><button data-delay="60" class="active">60s</button><button data-delay="75">75s</button><button data-delay="0">0s</button></div>
     </div>
-    <div class="notice"><b>🔊</b><span>Vérifiez que le volume du téléphone est activé. Appuyer ci-dessous active le son et verrouille l'écran.</span></div>
-    <button class="primary" id="arm">♙ &nbsp; ARMER LA SIMULATION</button>
+    <div class="notice learner-only"><b>🔊</b><span>Activez le volume, puis appuyez sur « Armer ». Le téléphone se verrouille et attend l’alerte du formateur.</span></div>
+    <div class="notice trainer-only"><b>📣</b><span>Les apprenants doivent d’abord avoir armé leur téléphone. Lancez ensuite l’alerte : elle s’affiche en direct chez eux.</span></div>
+    <button class="primary learner-only" id="arm">♙ &nbsp; ARMER MON TÉLÉPHONE</button>
+    <button class="primary trainer-only" id="launch">🚨 &nbsp; LANCER L’ALERTE</button>
+    <button class="secondary trainer-only" id="reset">↺ Réinitialiser (fin de groupe)</button>
+    <button class="secondary trainer-only" id="localtest">Tester sur ce téléphone (sans Firebase)</button>
+    <div class="statusmsg" id="statusMsg"></div>
     <div class="smallprint">Simulation pédagogique uniquement — aucune alerte réelle ne sera envoyée.</div>
   </section>
 
@@ -139,6 +160,7 @@ input:focus{border-color:var(--green)}
     <div class="clock" id="clock">12:12</div>
     <div class="date" id="date"></div>
     <div class="countdown" id="countdown">Déclenchement dans 10s...</div>
+    <div class="lockstatus" id="lockStatus"></div>
     
   </section>
 
@@ -200,8 +222,9 @@ input:focus{border-color:var(--green)}
 
 </main>
 <script>
+window.fbReady=new Promise(r=>{window._fbResolve=r});
 (()=>{
- let selected='staying', delay=60, timer=null, wake=null, audio=null, missionTimer=null, missionStart=0, metroTimer=null;
+ let selected='staying', delay=60, timer=null, wake=null, audio=null, missionTimer=null, missionStart=0, metroTimer=null, unsub=null, launchTimer=null, role='apprenant';
  const $=id=>document.getElementById(id);
  function show(id){['setup','lock','alert','missionScreen','emergencyScreen'].forEach(x=>$(x).classList.toggle('show',x===id))}
  function selectApp(app){selected=app; $('sauv').classList.toggle('selected',app==='sauv');$('staying').classList.toggle('selected',app==='staying')}
@@ -212,7 +235,7 @@ input:focus{border-color:var(--green)}
  function beep(){try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();audio.resume();const osc=audio.createOscillator(),gain=audio.createGain();osc.type='sine';osc.frequency.value=880;gain.gain.setValueAtTime(.0001,audio.currentTime);gain.gain.exponentialRampToValueAtTime(.16,audio.currentTime+.03);gain.gain.setValueAtTime(.16,audio.currentTime+.22);gain.gain.exponentialRampToValueAtTime(.0001,audio.currentTime+.45);osc.connect(gain);gain.connect(audio.destination);osc.start();osc.stop(audio.currentTime+.46)}catch(e){}}
  function trigger(){clearInterval(timer);timer=null;updateClock();$('alert').classList.toggle('staying',selected==='staying');$('brand').textContent=selected==='staying'?'STAYING ALIVE':'SAUV LIFE';$('alertkicker').textContent=selected==='staying'?'ALERTE BON SAMARITAIN':'ALERTE CITOYEN SAUVETEUR';$('alertdistance').textContent=$('distance').value.trim()||'—';$('alertmessage').textContent=selected==='staying'?'Une victime a besoin de votre aide immédiate':'Le SAMU a besoin de votre aide immédiate';$('result').classList.remove('show');$('result').textContent='';show('alert');beep();}
  function startCountdown(){let left=delay;updateClock();show('lock');$('countdown').textContent=left===0?'Déclenchement imminent...':`Déclenchement dans ${left}s...`;if(left===0){trigger();return}timer=setInterval(()=>{left--;if(left<=0){trigger()}else{$('countdown').textContent=`Déclenchement dans ${left}s...`}},1000)}
- $('arm').addEventListener('click',async()=>{try{if(navigator.wakeLock)wake=await navigator.wakeLock.request('screen')}catch(e){}try{if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen()}catch(e){}startCountdown()});
+ 
 
  $('accept').addEventListener('click',()=>{
    $('missionPlace').textContent=$('place').value.trim()||'Lieu non précisé';
@@ -225,7 +248,7 @@ input:focus{border-color:var(--green)}
    tick();missionTimer=setInterval(()=>{tick();updateEmergencyTime()},1000);
    $('missionResult').classList.remove('show');show('missionScreen');beep();
  });
- $('refuse').addEventListener('click',()=>{clearInterval(timer);clearInterval(missionTimer);show('setup');try{if(document.fullscreenElement)document.exitFullscreen()}catch(e){}if(wake){wake.release().catch(()=>{});wake=null}});
+ $('refuse').addEventListener('click',()=>{clearInterval(timer);clearInterval(missionTimer);stopListening();show('setup');releaseScreen()});
  $('arrived').addEventListener('click',()=>{
    show('emergencyScreen');
    beep();
@@ -240,7 +263,7 @@ input:focus{border-color:var(--green)}
    $('pulseHeart').classList.remove('beat');
  }
  
- $('finishExercise').addEventListener('click',()=>{
+ $('finishExercise').addEventListener('click',()=>{stopListening();
    stopMetro();
    clearInterval(missionTimer);missionTimer=null;
    clearInterval(timer);timer=null;
@@ -269,15 +292,108 @@ input:focus{border-color:var(--green)}
  });
  updateClock();
 
+ // ===== Mode temps réel (Firebase) =====
+ const LAUNCH_TXT='🚨 \u00a0 LANCER L’ALERTE';
+ let connOk=false;
+ function say(t){$('statusMsg').textContent=t}
+ function setRole(r){role=r;document.body.classList.toggle('role-trainer',r==='formateur');document.body.classList.toggle('role-learner',r==='apprenant');$('roleTrainer').classList.toggle('selected',r==='formateur');$('roleLearner').classList.toggle('selected',r==='apprenant');say('');try{localStorage.setItem('psc-role',r)}catch(e){}}
+ $('roleTrainer').addEventListener('click',()=>setRole('formateur'));
+ $('roleLearner').addEventListener('click',()=>setRole('apprenant'));
+ let saved=null;try{saved=localStorage.getItem('psc-role')}catch(e){}
+ setRole(saved==='formateur'?'formateur':'apprenant');
+ function unlockAudio(){try{audio=audio||new (window.AudioContext||window.webkitAudioContext)();audio.resume();const b=audio.createBuffer(1,1,22050),n=audio.createBufferSource();n.buffer=b;n.connect(audio.destination);n.start(0)}catch(e){}}
+ async function lockScreen(){try{if(navigator.wakeLock)wake=await navigator.wakeLock.request('screen')}catch(e){}try{if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen()}catch(e){}}
+ function releaseScreen(){try{if(document.fullscreenElement)document.exitFullscreen()}catch(e){}if(wake){wake.release().catch(()=>{});wake=null}}
+ function ready(){return Promise.race([window.fbReady,new Promise(r=>setTimeout(()=>r(false),8000))])}
+ function stopListening(){if(unsub){try{unsub()}catch(e){}unsub=null}}
+ function showConn(){const c=$('conn');c.textContent=connOk?'● Connecté au serveur':'● Hors ligne';c.className='conn '+(connOk?'ok':'ko');const l=$('lockStatus');l.textContent=unsub?(connOk?'● connecté':'⚠ connexion perdue…'):'';l.className='lockstatus'+(connOk?'':' ko')}
+ window.addEventListener('fbconn',e=>{connOk=e.detail;showConn()});
+ ready().then(ok=>{if(!ok)showConn()});
+
+ // APPRENANT : armer et attendre l’alerte
+ $('arm').addEventListener('click',async()=>{
+   unlockAudio();say('Connexion…');
+   await lockScreen();
+   if(!await ready()){releaseScreen();say('⚠️ Connexion au serveur impossible. Vérifiez internet et réessayez.');return}
+   say('');updateClock();show('lock');stopListening();
+   let first=true,baseline=null,lastId=null;
+   unsub=window.fb.ecouter(d=>{
+     if(first){first=false;baseline=d&&d.id||null;return}
+     if(d&&d.status==='triggered'&&d.id&&d.id!==baseline&&d.id!==lastId){
+       lastId=d.id;stopListening();
+       selectApp(d.app==='sauv'?'sauv':'staying');
+       $('place').value=d.place||'';$('distance').value=d.distance||'';$('dae').value=d.dae||'';
+       trigger();
+     }
+   });
+   showConn();
+ });
+
+ // FORMATEUR : lancer, annuler, réinitialiser
+ $('launch').addEventListener('click',async()=>{
+   const btn=$('launch');
+   if(launchTimer){clearInterval(launchTimer);launchTimer=null;btn.textContent=LAUNCH_TXT;say('Lancement annulé.');return}
+   if(!await ready()){say('⚠️ Connexion au serveur impossible. Vérifiez internet et réessayez.');return}
+   const send=async()=>{
+     clearInterval(launchTimer);launchTimer=null;btn.textContent=LAUNCH_TXT;
+     try{await window.fb.declencher({app:selected,place:$('place').value.trim(),distance:$('distance').value.trim(),dae:$('dae').value.trim()});say('✅ Alerte envoyée aux apprenants. Pensez à réinitialiser en fin de groupe.')}
+     catch(e){say('⚠️ Échec de l’envoi : '+(e&&e.message||e))}
+   };
+   let left=delay;
+   if(left<=0){send();return}
+   const label=()=>{btn.textContent='⏳ Alerte dans '+left+'s — toucher pour annuler'};
+   label();say('');
+   launchTimer=setInterval(()=>{left--;if(left<=0)send();else label()},1000);
+ });
+ $('reset').addEventListener('click',async()=>{
+   if(launchTimer){clearInterval(launchTimer);launchTimer=null;$('launch').textContent=LAUNCH_TXT}
+   if(!await ready()){say('⚠️ Connexion au serveur impossible.');return}
+   try{await window.fb.reinitialiser();say('↺ Remis à zéro. Prêt pour le groupe suivant.')}catch(e){say('⚠️ Échec : '+(e&&e.message||e))}
+ });
+ // Test local (comportement d’origine, sans Firebase)
+ $('localtest').addEventListener('click',async()=>{unlockAudio();await lockScreen();startCountdown()});
+
  const lockSurface=$('lock');
  if(lockSurface){
    lockSurface.addEventListener('click',e=>{
-     if(e.target.closest('button,a,input,select,textarea,label')) return;
+     if(e.target.closest('button,a,input,select,textarea,label')||unsub) return;
      trigger();
    });
  }
 
 })();
+</script>
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-app.js";
+  import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-auth.js";
+  import { getDatabase, ref, set, onValue, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.0.0/firebase-database.js";
+
+  const firebaseConfig = {
+    apiKey: "AIzaSyBLp2VJ33VUesfjdv7XRex4tvI6c9jAoio",
+    authDomain: "psc-2026.firebaseapp.com",
+    databaseURL: "https://psc-2026-default-rtdb.europe-west1.firebasedatabase.app",
+    projectId: "psc-2026",
+    storageBucket: "psc-2026.firebasestorage.app",
+    messagingSenderId: "363706013370",
+    appId: "1:363706013370:web:4d055212e636a554e2d483"
+  };
+
+  try {
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    await signInAnonymously(getAuth(app));
+    const alerteRef = ref(db, "alerte");
+    window.fb = {
+      declencher: (scenario) => set(alerteRef, { status: "triggered", id: Date.now() + "-" + Math.random().toString(36).slice(2, 8), ...scenario, at: serverTimestamp() }),
+      reinitialiser: () => set(alerteRef, { status: "idle" }),
+      ecouter: (cb) => onValue(alerteRef, (snap) => cb(snap.val()), (err) => console.error(err))
+    };
+    onValue(ref(db, ".info/connected"), (snap) => window.dispatchEvent(new CustomEvent("fbconn", { detail: snap.val() === true })));
+    window._fbResolve(true);
+  } catch (e) {
+    console.error("Firebase :", e);
+    window._fbResolve(false);
+  }
 </script>
 </body>
 </html>
